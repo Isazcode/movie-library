@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Family Movie Requests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: marquee header, a box-office request window, the request queue, then the full A–Z library */
+:root{
+  --bg:#eef0f4; --surface:#ffffff; --fg:#1b2030; --muted:#5d6478; --line:#d7dbe4;
+  --accent:#c2410c; --accent-soft:#fde7d9; --marquee:#1b2030; --marquee-fg:#fff4e6; --bulb:#f5b544;
+  --ok:#15803d; --ok-soft:#dcfce7; --info:#1d4ed8; --info-soft:#dbeafe; --bad:#b91c1c; --bad-soft:#fee2e2;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12151d; --surface:#1a1f2b; --fg:#e9ebf1; --muted:#9aa1b4; --line:#2b3242;
+  --accent:#fb923c; --accent-soft:#3a2416; --marquee:#0b0d13; --marquee-fg:#fff4e6; --bulb:#f5b544;
+  --ok:#4ade80; --ok-soft:#14321f; --info:#93b4ff; --info-soft:#1c2a4a; --bad:#f87171; --bad-soft:#3b1a1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151d; --surface:#1a1f2b; --fg:#e9ebf1; --muted:#9aa1b4; --line:#2b3242;
+  --accent:#fb923c; --accent-soft:#3a2416; --marquee:#0b0d13; --marquee-fg:#fff4e6; --bulb:#f5b544;
+  --ok:#4ade80; --ok-soft:#14321f; --info:#93b4ff; --info-soft:#1c2a4a; --bad:#f87171; --bad-soft:#3b1a1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.marquee{background:var(--marquee);color:var(--marquee-fg);position:relative}
+header.marquee::before,header.marquee::after{content:"";position:absolute;left:0;right:0;height:6px;
+  background:radial-gradient(circle,var(--bulb) 2px,transparent 2.6px) 0 50%/16px 6px repeat-x}
+header.marquee::before{top:6px} header.marquee::after{bottom:6px}
+header .wrap{padding-block:34px 30px;display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--bulb);font-weight:600}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(40px,8vw,72px);line-height:.95;margin:0;text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
+h2{font-family:var(--display);font-weight:800;font-size:30px;line-height:1;margin:0;text-transform:uppercase;letter-spacing:.01em}
+.lede{max-width:60ch;color:color-mix(in srgb,var(--marquee-fg) 80%,transparent);margin:6px 0 0}
+section.block{padding-block:26px 6px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.grid2 > *{min-width:0}
+@media (max-width:620px){.grid2{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+input,select,textarea{font:15px var(--body);padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%}
+textarea{resize:vertical;min-height:64px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.az a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:600 15px var(--body);border:0;border-radius:999px;padding:10px 20px;background:var(--accent);color:#fff;cursor:pointer;align-self:flex-start}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.small{font-size:13px;padding:7px 14px}
+.hint{font-size:13px;color:var(--muted);min-height:1.2em}
+.hint.have{color:var(--ok);font-weight:600}
+.notice{font-size:14px;background:var(--accent-soft);color:var(--fg);border-radius:10px;padding:10px 14px}
+.reqs{display:flex;flex-direction:column;gap:10px}
+.req{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.req-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:baseline}
+.req-title{font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--muted)}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.s-new{background:var(--accent-soft);color:var(--accent)}
+.s-working{background:var(--info-soft);color:var(--info)}
+.s-ready{background:var(--ok-soft);color:var(--ok)}
+.s-unavailable{background:var(--bad-soft);color:var(--bad)}
+.reply{border-left:3px solid var(--line);padding-left:10px;font-size:14px}
+.reply b{font-weight:600}
+.edit{display:grid;grid-template-columns:150px 160px 1fr auto;gap:8px;align-items:end}
+.edit > *{min-width:0}
+@media (max-width:760px){.edit{grid-template-columns:1fr 1fr}.edit .wide{grid-column:1 / -1}}
+.empty{color:var(--muted);padding:6px 0}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:600 13px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-top:14px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.bar .wrap{padding-block:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{font:600 14px var(--body);border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.tabs .n{font-weight:500;opacity:.7;margin-left:4px;font-variant-numeric:tabular-nums}
+#q{flex:1 1 220px;min-width:0;border-radius:999px;background:var(--surface)}
+.az{display:flex;flex-wrap:wrap;gap:2px;width:100%}
+.az a{font:600 12px var(--body);color:var(--muted);text-decoration:none;padding:3px 6px;border-radius:4px}
+.az a:hover{background:var(--accent-soft);color:var(--accent)}
+.az a.off{opacity:.3;pointer-events:none}
+#list{padding-block:18px 60px}
+.group{display:grid;grid-template-columns:56px 1fr;gap:0 16px;padding-block:14px;border-top:1px solid var(--line);scroll-margin-top:130px}
+.group:first-child{border-top:0}
+.letter{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;color:var(--accent)}
+ul{list-style:none;margin:0;padding:0;columns:3 260px;column-gap:28px;min-width:0}
+li{break-inside:avoid;padding:4px 0;display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed color-mix(in srgb,var(--line) 70%,transparent)}
+li .t{min-width:0}
+li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:520px){.group{grid-template-columns:1fr}.letter{font-size:30px;margin-bottom:4px}}
+</style>
+</head>
+<body style="margin:0">
+<header class="marquee"><div class="wrap">
+  <div class="eyebrow">Box office · open</div>
+  <h1>Family Movie Requests</h1>
+  <p class="lede">Check <a href="./" style="color:var(--bulb)">the library</a> first. If what you want isn't there, ask for it here. Miguel gets an email, and the board below shows the status and ETA once he replies.</p>
+</div></header>
+
+<section class="block"><div class="wrap">
+  <form class="panel" id="form" novalidate>
+    <h2>Request a title</h2>
+    <div class="grid2">
+      <label for="f-title">Movie or show
+        <input id="f-title" required maxlength="140" placeholder="e.g. Jaws (1975)" autocomplete="off">
+      </label>
+      <label for="f-kind">Type
+        <select id="f-kind"><option value="Movie">Movie</option><option value="TV show">TV show</option></select>
+      </label>
+    </div>
+    <div class="hint" id="f-hint"></div>
+    <label for="f-note">Anything specific? (season, 4K, Spanish audio…)
+      <textarea id="f-note" maxlength="500"></textarea>
+    </label>
+    <div class="grid2" style="grid-template-columns:1fr 1fr">
+      <label for="f-name">Your name
+        <input id="f-name" maxlength="60" autocomplete="name">
+      </label>
+      <label for="f-email">Your email (optional, for the ETA reply)
+        <input id="f-email" type="email" maxlength="120" autocomplete="email">
+      </label>
+    </div>
+    <button class="btn" id="f-send" type="submit">Send request</button>
+    <div class="hint" id="f-status" role="status"></div>
+  </form>
+</div></section>
+
+<section class="block"><div class="wrap" style="display:flex;flex-direction:column;gap:14px;padding-bottom:60px">
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center">
+    <h2>Request board</h2>
+    <div class="filters" id="filters">
+      <button type="button" class="chip" data-f="open" aria-pressed="true">Open</button>
+      <button type="button" class="chip" data-f="all" aria-pressed="false">All</button>
+    </div>
+  </div>
+  <div class="reqs" id="reqs"><p class="empty">Loading requests…</p></div>
+</div></section>
+
+<script>
+const FORM_URL='https://docs.google.com/forms/d/e/1FAIpQLSfIwN8TxsYjHv9ou488wnE5s7XZ9irNdYK-6dbIBlWFbSpJzw/formResponse';
+const F={kind:'entry.509697597',title:'entry.1472248889',note:'entry.979215529',name:'entry.1019409216',email:'entry.1166530966'};
+const BOARD_CSV='https://docs.google.com/spreadsheets/d/e/2PACX-1vSINB2k3PI0SFIZh9uYYz4L9IUaTnhMEG-FSwL2d-X2OW3FgOPWy09Sev6rw-eGMvWC0bAI0Zmgg4gw/pub?gid=1407543496&single=true&output=csv';
+const LIB={"movies": [["10 Cloverfield Lane", 2016], ["13 Hours: The Secret Soldiers of Benghazi", 2016], ["13 Minutes", 2021], ["1917", 2019], ["2 Fast 2 Furious", 2003], ["2067", 2020], ["20th Century Women", null], ["28 Days Later", 2002], ["28 Years Later", 2025], ["28 Years Later: The Bone Temple", 2026], ["The 2nd", 2020], ["300", 2006], ["300: Rise of an Empire", 2014], ["The 33", 2015], ["The 355", 2022], ["47 Hours To Live", 2019], ["47 Meters Down", 2017], ["47 Meters Down: Uncaged", 2019], ["57 Seconds", 2023], ["The 5th Wave", 2016], ["65", 2023], ["90 Minutes in Heaven", null], ["99 Homes", 2014], ["About Time", 2013], ["The Accountant", 2016], ["The Accountant 2", 2025], ["Acrimony", 2018], ["Act of Valor", 2012], ["The Adam Project", 2022], ["Adult Beginners", null], ["Afraid", 2024], ["After Death", 2023], ["Aftermath", 2017], ["The Age of Adaline", 2015], ["AINBO Spirit Of The Amazon", 2021], ["Air", 2023], ["Alexander and the Terrible, Horrible, No Good, Very Bad Day", 2014], ["Alien Romulus", 2024], ["Alien: Covenant", 2017], ["All The Old Knives", 2022], ["Allegiant", 2016], ["Allied", 2016], ["Almost Christmas", 2016], ["Alpha", 2018], ["Alvin and the Chipmunks The Road Chip", 2015], ["Am I Racist", 2024], ["The Amateur", 2025], ["The Amazing Spider-Man", 2012], ["The Amazing Spider-Man 2", 2014], ["Ambulance", 2022], ["American Hero", 2015], ["American Made", 2017], ["American Sniper", 2014], ["American Ultra", 2015], ["Anaconda", 2025], ["The Angry Birds Movie", 2016], ["Animal House", 1978], ["Annabelle Creation", 2017], ["Annihilation", 2018], ["Anora", 2024], ["Ant-Man", 2015], ["Ant-Man And The Wasp", 2018], ["Ant-Man And The Wasp Quantumania", 2023], ["Antarctica A Year on Ice", 2013], ["Apex", 2021], ["Apex", 2026], ["The Apprentice", 2024], ["Aquaman", 2018], ["Aquaman and the Lost Kingdom", 2023], ["Arcadian", 2024], ["Area 51", 2015], ["Argylle", 2024], ["Arrival", 2016], ["Assassin", 2023], ["Assassins Creed", 2016], ["Asteroid City", 2023], ["Atlas", 2024], ["Atomic Blonde", 2017], ["Ava", 2020], ["Avatar Fire and Ash", 2025], ["Avatar The Way Of Water", 2022], ["Avatar: The Legend of Aang – The Last Airbender", 2026], ["Avengers Age of Ultron", 2015], ["Avengers Infinity War", 2018], ["Baby Driver", 2017], ["Back To The Future", 1985], ["Back To The Future Part II", 1989], ["Back to the Future Part III", 1990], ["Backrooms", 2026], ["Bad Apples", 2025], ["Bad Boys For Life", 2020], ["Bad Boys Ride Or Die", 2024], ["The Bad Guys 2", 2025], ["Bad Man", 2025], ["Bad Moms", 2016], ["Bad Samaritan", 2018], ["Bad Santa 2", 2016], ["Badland Hunters", 2024], ["Ballerina", 2025], ["The Batman", 2022], ["Batman Knightfall Part 1", 2026], ["Batman v Superman Dawn of Justice", 2016], ["Baywatch", 2017], ["Beast", 2022], ["The Beekeeper", 2024], ["Ben Hur", 2016], ["Bezos The Beginning", 2023], ["The BFG", 2016], ["Big Game", 2014], ["Big Hero 6", 2014], ["The Big Short", 2015], ["Bill & Ted Face the Music", 2020], ["Birdman", 2014], ["Birds of Prey And the Fantabulous Emancipation of One Harley Quinn", 2020], ["Black Adam", 2022], ["The Black Demon", 2023], ["Black Panther", 2018], ["Black Panther Wakanda Forever", 2022], ["The Black Phone", 2021], ["Black Sea", 2014], ["Black Widow", 2021], ["BlackBerry", 2023], ["Blackhat", 2015], ["Blacklight", 2022], ["The Blackout", 2020], ["Blade Runner 2049", 2017], ["Blink Twice", 2024], ["Blockers", 2018], ["Bloodshot", 2020], ["Blue Beetle", 2023], ["The Blue Lagoon", null], ["Bob Marley One Love", 2024], ["Borderlands", 2024], ["The Boss", 2016], ["The Boss Baby", 2017], ["The Boss Baby Family Business", 2021], ["The Boy", 2016], ["Boy Kills World", 2023], ["The Boy Next Door", 2015], ["Boyhood", 2014], ["The Breadwinner", 2026], ["Breaking In", 2018], ["Bridge of Spies", 2015], ["Bridget Jones Baby", 2016], ["Brooklyn", 2015], ["Brothers", 2009], ["The Brothers Grimsby", 2016], ["The Brutalist", 2024], ["Bugonia", 2025], ["Bullet Proof", 2022], ["Bullet Train", 2022], ["Bumblebee", 2018], ["The Burning Sea", 2022], ["Burnt", 2015], ["The Call Up", 2016], ["Captain America Brave New World", 2025], ["Captain America Civil War", 2016], ["Captain Fantastic", 2016], ["The Captive", 2014], ["Capture the Flag", 2015], ["Carry On", 2024], ["Cars 3", 2017], ["Cast Away", 2000], ["Caught Stealing", 2025], ["Cell", 2016], ["Central Intelligence", 2016], ["The Challenger", 2015], ["Challengers", 2024], ["Chappie", 2015], ["CHiPS", 2017], ["The Circle", 2017], ["Citizen Vigilante", 2026], ["Civil War", 2024], ["The Cobbler", 2014], ["Cocaine Bear", 2023], ["Cold Pursuit", null], ["Cold Storage", 2026], ["Collateral Beauty", 2016], ["Colonia", 2015], ["Companion", 2025], ["Complete Unknown", 2016], ["Conclave", 2024], ["Concussion", 2015], ["The Conjuring 2", 2016], ["The Contractor", 2022], ["Cop Car", 2015], ["Couples Weekend", 2025], ["Coyote vs Acme", 2026], ["The Creator", 2023], ["Creed", 2015], ["Creed II", 2018], ["Creed III", 2023], ["Crime 101", 2026], ["The Crow", 2024], ["Cruella", 2021], ["The D Train", 2015], ["Daddys Home", 2015], ["Daddys Home 2", 2017], ["The Dark Tower", 2017], ["DAVID", 2025], ["Day Shift", 2022], ["A Day To Die", 2022], ["DC League of Super Pets", 2022], ["Deadpool", 2016], ["Deadpool 2", 2018], ["Deadpool Wolverine", 2024], ["The Death Of Robin Hood", 2026], ["Death On The Nile", 2022], ["Deepwater Horizon", 2016], ["Den of Thieves", 2018], ["The Desperate Hour", 2021], ["Despicable Me", 2010], ["Despicable Me 2", 2013], ["Despicable Me 3", 2017], ["Despicable Me 4", 2024], ["Destination Wedding", 2018], ["Detective Knight Redemption", 2022], ["Detective Knight Rogue", 2022], ["The Devil Wears Prada 2", 2026], ["Die Hart 2 Die Harter", 2024], ["Dinosaur", 2000], ["Dirty Grandpa", 2016], ["Disclosure Day", 2026], ["Divergent", 2014], ["Doctor Strange", 2016], ["Doctor Strange In The Multiverse Of Madness", 2022], ["Dog", 2022], ["Dog Man", 2025], ["A Dog's Journey", 2019], ["Dolittle", 2020], ["Dont Look Up", 2021], ["Dope", 2015], ["Downsizing", 2017], ["Dragon Ball Z Resurrection F", 2015], ["The Duff", 2015], ["Dune", 2021], ["Dune Part Two", 2024], ["Dungeons and Dragons Honor Among Thieves", 2023], ["Dunkirk", 2017], ["Eat Pray Love", 2010], ["Eden", 2024], ["El Abrazo de la Serpiente (Embrace of the Serpent)", null], ["Electra Woman & Dyna Girl", 2016], ["Elemental", 2023], ["Encanto", 2021], ["The End Of Oak Street", 2026], ["Entourage", 2015], ["The Equalizer", 2014], ["The Equalizer 3", 2023], ["Escape Plan 2 Hades", 2018], ["Escape Room Tournament Of Champions", 2021], ["The Escort", 2015], ["Eternals", 2021], ["Everest", 2015], ["Everly", 2014], ["Everything Everywhere All At Once", 2022], ["Exodus Gods and Kings", 2014], ["Expend4bles", 2023], ["Eye in the Sky", 2015], ["F1 The Movie", 2025], ["F9: The Fast Saga", 2021], ["The Fabelmans", 2022], ["Fall", 2022], ["The Fall Guy", 2024], ["The Family Plan", 2023], ["Fantastic Beasts and Where to Find Them", 2016], ["Fantastic Beasts The Crimes of Grindelwald", 2018], ["Fantastic Beasts The Secrets of Dumbledore", 2022], ["Fantastic Four", 2015], ["The Fantastic Four First Steps", 2025], ["Fast & Furious", 2009], ["Fast & Furious 6", 2013], ["The Fast and the Furious", 2001], ["The Fast and the Furious Tokyo Drift", 2006], ["Fast Five", 2011], ["Fast X", 2023], ["The Fate of the Furious", 2017], ["Father Stu", 2022], ["Ferrari", 2023], ["Fifty Shades Darker", 2017], ["Fifty Shades of Grey", 2015], ["Fight Or Flight", 2025], ["Final Destination Bloodlines", 2025], ["Finch", 2021], ["Finding Dory", 2016], ["The Finest Hours", 2016], ["First Kill", 2017], ["First Man", 2018], ["Fist Fight", 2017], ["Fistful Of Vengeance", 2022], ["The Flash", 2023], ["Flatliners", 2017], ["Flight Risk", 2025], ["Flow", 2024], ["Fly Me To The Moon", 2024], ["Focus", 2015], ["The Forest", 2016], ["The Forger", 2014], ["The Founder", 2016], ["Frankenstein", 2025], ["Freaks Of Nature", 2015], ["Free Guy", 2021], ["Free Solo", 2018], ["Free Willy", 1993], ["Free Willy 2", 1995], ["Free Willy 3 The Rescue", 1997], ["Furiosa A Mad Max Saga", 2024], ["The Furious", 2026], ["Furious 7", 2015], ["The Gambler", 2014], ["Game Night", 2018], ["The Garfield Movie", 2024], ["The Gentleman Thief", 2026], ["Geostorm", 2017], ["Get a Job", 2016], ["Get Out", 2017], ["Ghost In The Shell", 2017], ["Ghostbusters", 2016], ["Ghostbusters Afterlife", 2021], ["Ghostbusters Frozen Empire", 2024], ["Ghosted", 2023], ["Gifted", 2017], ["The Girl In The Spider's Web", 2018], ["The Girl on the Train", 2016], ["The Girl Who Escaped The Kara Robinson Story", 2023], ["The Girl with All the Gifts", 2016], ["The Girl with the Dragon Tattoo", 2011], ["Girls Trip", 2017], ["The Giver", 2014], ["Gladiator", 2000], ["Gladiator 2", 2024], ["Glass", 2019], ["Glass Onion A Knives Out Mystery", 2022], ["Goat", 2026], ["Gods of Egypt", 2016], ["Godzilla King Of The Monsters", 2019], ["Godzilla Minus One", 2023], ["Godzilla Vs. Kong", 2021], ["Godzilla X Kong The New Empire", 2024], ["Going in Style", 2017], ["Gold", 2016], ["The Good Dinosaur", 2015], ["Good Kill", 2014], ["Good Luck, Have Fun, Dont Die", 2025], ["Goosebumps", 2015], ["The Gorge", 2025], ["Gran Turismo", 2023], ["The Great Gatsby", 2013], ["The Great Wall", 2016], ["The Greatest Lie Ever Sold", 2022], ["Greedy People", 2024], ["Green Book", 2018], ["Green Zone", 2010], ["Greenland 2 Migration", 2026], ["Greyhound", 2020], ["Gringo", 2018], ["Guardians of the Galaxy Vol. 2", 2017], ["Guardians Of The Galaxy Vol. 3", 2023], ["The Gunman", 2015], ["Gunpowder Milkshake", 2021], ["Guy Ritchies The Covenant", 2023], ["Hacksaw Ridge", 2016], ["Hail Caesar", 2016], ["Halloween Kills", 2021], ["Hamnet", 2025], ["The Hangover", 2009], ["The Hangover Part II", 2011], ["The Hangover Part III", 2013], ["Happy Gilmore 2", 2025], ["Hardcore Henry", 2016], ["Harry Potter And The Chamber Of Secrets", 2002], ["Harry Potter And The Deathly Hallows Part 1", 2010], ["Harry Potter And The Deathly Hallows Part 2", 2011], ["Harry Potter And The Goblet Of Fire", 2005], ["Harry Potter And The Half-blood Prince", 2009], ["Harry Potter And The Order Of The Phoenix", 2007], ["Harry Potter And The Philosopher's Stone", 2001], ["Harry Potter And The Prisoner Of Azkaban", 2004], ["The Hateful Eight", 2015], ["Heads of State", 2025], ["Heart Eyes", 2025], ["Hector and the Search for Happiness", 2014], ["Hellboy", 2019], ["Hellboy The Crooked Man", 2024], ["Hellboy The Golden Army", 2008], ["Henry Danger The Movie", 2025], ["Here", 2024], ["Heretic", 2024], ["Hidden Figures", 2016], ["High Heat", 2022], ["High Rollers", 2025], ["Hijack 1971", 2024], ["Hitman Agent 47", 2015], ["The Hitmans BodyGuard", 2017], ["The Hitmans Wifes Bodyguard", 2021], ["The Hobbit Battle Of The Five Armies", 2014], ["Home", 2015], ["Home Sweet Hell", 2015], ["Homestead", 2024], ["Hoppers", 2026], ["Horrible Bosses 2", 2014], ["Hot Pursuit", 2015], ["Hot Tub Time Machine 2", 2015], ["The House", 2017], ["House Of Gucci", 2021], ["House Party", 2023], ["The Housemaid", 2025], ["How To Be A Latin Lover", 2017], ["How to Be Single", 2016], ["How to Have Sex", 2023], ["How To Make a Killing", 2026], ["How to Plan an Orgy in a Small Town", 2015], ["How To Train Your Dragon", 2010], ["How To Train Your Dragon", 2025], ["How to Train Your Dragon 2", 2014], ["How To Train Your Dragon The Hidden World", 2019], ["Howls Moving Castle", 2004], ["The Hunger Games Mockingjay Part 2", 2015], ["The Hunger Games The Ballad Of Songbirds Snakes", 2023], ["Hunter Killer", 2018], ["Hunting Season", 2025], ["The Huntsman Winters War", 2016], ["I Am Wrath", 2016], ["I Feel Pretty", 2018], ["I Kill Giants", 2018], ["I.S.S.", 2023], ["I.T.", 2016], ["Ice Age Collision Course", 2016], ["Ice Age The Great Egg-Scapade", 2016], ["Ice Road Vengeance", 2025], ["IF", 2024], ["The Imitation Game", 2014], ["Immaculate", 2024], ["Imperium", 2016], ["In The Grey", 2026], ["In The Heart of the Sea", 2015], ["Incredibles 2", 2018], ["Independence Day", 1996], ["Independence Day Resurgence", 2016], ["Indiana Jones And The Dial Of Destiny", 2023], ["Inferno", 2016], ["The Infiltrator", 2016], ["Infini", 2015], ["Infinity Pool", 2023], ["The Informer", 2019], ["Inside Out 2", 2024], ["The Inspection", 2022], ["Instant Family", 2018], ["The Instigators", 2024], ["Insurgent", 2015], ["Interstellar", 2014], ["The Interview", 2014], ["Into the Storm", 2014], ["The Invisible Man", 2020], ["Ip Man 3", 2015], ["IT", 2017], ["It Comes at Night", 2017], ["It Ends With Us", 2024], ["Jack Reacher Never Go Back", 2016], ["Jackie", 2016], ["Jackpot", 2024], ["Jason Bourne", 2016], ["Jaws", 1975], ["Jaws 2", 1978], ["Jaws 3", 1983], ["John Wick", 2014], ["John Wick Chapter 2", 2017], ["John Wick Chapter 4", 2023], ["John Wick: Chapter 3 – Parabellum", 2019], ["Johnny English Strikes Again", 2018], ["Joker Folie a Deux", 2024], ["Joy", 2015], ["Joy Ride", 2023], ["The Judge", 2014], ["The Jungle Book", 2016], ["Jupiter Ascending", 2015], ["Jurassic Park", 1993], ["Jurassic Park III", 2001], ["Jurassic World", 2015], ["Jurassic World Dominion", 2022], ["Jurassic World Fallen Kingdom", 2018], ["Jurassic World Rebirth", 2025], ["Just Before I Go", 2014], ["Justice League", 2017], ["Justice League Dark", 2017], ["Justice League vs Teen Titans", 2016], ["Kandahar", 2023], ["Karate Kid Legends", 2025], ["Kate", 2021], ["Keanu", 2016], ["Keeping Up with the Joneses", 2016], ["The Kid Who Would Be King", 2019], ["Kidnap", 2017], ["Killers Of The Flower Moon", 2023], ["Kin", 2018], ["King Arthur Legend of the Sword", 2017], ["The King of Kings", 2025], ["The King Of Staten Island", 2020], ["King Of Thieves", 2018], ["The Kings Man", 2021], ["Kingsman The Golden Circle", 2017], ["Kingsman: The Secret Service", 2014], ["Knights of the Zodiac", 2023], ["Knives Out", 2019], ["Knock at the Cabin", 2023], ["Kong Skull Island", 2017], ["Kraven The Hunter", 2024], ["Kung Fu Panda 3", 2016], ["Kung Fu Panda 4", 2024], ["Kung Fu Yoga", 2017], ["La La Land", 2016], ["Lamborghini The Man Behind The Legend", 2022], ["Last Breath", 2025], ["Last Night In Soho", 2021], ["Last Seen Alive", 2022], ["The Last Witch Hunter", 2015], ["Leave the World Behind", 2023], ["Legend", 2015], ["The Legend of Tarzan", 2016], ["Let's Be Cops", 2014], ["Life", 2017], ["Lights Out", 2016], ["Lightyear", 2022], ["Lilo & Stitch", 2025], ["Limitless", 2011], ["Lion", 2016], ["The Little Death", 2014], ["Live by Night", 2016], ["The Lockdown", 2024], ["Logan", 2017], ["Logan Lucky", 2017], ["London Has Fallen", 2016], ["Long Gone Heroes", 2024], ["Longlegs", 2024], ["The Lord Of The Rings The War Of The Rohirrim", 2024], ["The Lost Bus", 2025], ["The Lost City", 2022], ["The Lost City of Z", 2017], ["Lost in the Pacific", 2016], ["The Lost World: Jurassic Park", 1997], ["Love And Monsters", 2020], ["Love Hurts", 2025], ["Lucy", 2014], ["Lyle Lyle Crocodile", 2022], ["Mad Max Fury Road", 2015], ["Madame Web", 2024], ["Magic Mike", 2012], ["Magic Mike XXL", 2015], ["Magic Mikes Last Dance", 2023], ["The Magnificent Seven", 2016], ["Mamma Mia", 2008], ["A Man Called Otto", 2022], ["Man Down", 2015], ["The Man from U.N.C.L.E.", 2015], ["Man Of War", 2026], ["The Man Who Knew Infinity", 2015], ["The Mandalorian & Grogu", 2026], ["Marry Me", 2022], ["The Martian", 2015], ["Marty Supreme", 2025], ["The Marvels", 2023], ["Masterminds", 2016], ["Masterplan", 2026], ["Masters Of The Universe", 2026], ["The Matrix Resurrections", 2021], ["Max Steel", 2016], ["MaXXXine", 2024], ["Mayday", 2026], ["The Maze Runner", 2014], ["Maze Runner Scorch Trials", 2015], ["Maze Runner The Death Cure", 2018], ["Me Before You", 2016], ["Mean Girls", 2024], ["Mechanic Resurrection", 2016], ["The Meg", 2018], ["Meg 2 The Trench", 2023], ["Memory", 2022], ["The Menu", 2022], ["Mercy", 2026], ["Michael", 2026], ["Mickey 17", 2025], ["Midnight Special", 2016], ["Migration", 2023], ["Mike and Dave Need Wedding Dates", 2016], ["Mile 22", 2018], ["Miller's Girl", 2024], ["A Million Ways To Die In The West", null], ["Mindcage", 2022], ["A Minecraft Movie", 2025], ["Minions", 2015], ["Minions and Monsters", 2026], ["Minions The Rise Of Gru", 2022], ["The Ministry Of Ungentlemanly Warfare", 2024], ["Miracles from Heaven", 2016], ["Miss Peregrines Home For Peculiar Children", 2016], ["Mission Impossible Dead Reckoning Part One", 2023], ["Mission Impossible Fallout", 2018], ["Mission Impossible Rogue Nation", 2015], ["Mission Impossible The Final Reckoning", 2025], ["Moana", 2016], ["Moana (live-action)", 2026], ["Moana 2", 2024], ["Money Monster", 2016], ["Monkey Man", 2024], ["Monster Trucks", 2016], ["Moonfall", 2022], ["Moonlight", 2016], ["Morbius", 2022], ["Morgan", 2016], ["Mortal Kombat", 1995], ["Mortal Kombat", 2021], ["Mortal Kombat Annihilation", 1997], ["Mortal Kombat II", 2026], ["The Mother", 2023], ["Mothers Day", 2016], ["Mr Right", 2015], ["Mufasa: The Lion King", 2024], ["Mulan", 2020], ["Mummies", 2023], ["The Mummy", 2017], ["Murder on the Orient Express", 2017], ["Mutiny", 2026], ["Muzzle", 2023], ["Muzzle City of Wolves", 2025], ["My Big Fat Greek Wedding 2", 2016], ["My Cousin Rachel", 2017], ["My Old Ass", 2024], ["The Naked Gun", 2025], ["Napoleon", 2023], ["Neighbors", 2014], ["Neighbors 2 Sorority Rising", 2016], ["Nerve", 2016], ["The New Mutants", 2020], ["The Nice Guys", 2016], ["Night at the Museum Secret of the Tomb", 2014], ["The Night Before", 2015], ["Night Patrol", 2025], ["Night School", 2018], ["Night Train", 2023], ["Nightcrawler", 2014], ["No Escape", 2015], ["No Hard Feelings", 2023], ["No Time To Die", 2021], ["No Way Up", 2024], ["Nobody", 2021], ["Nobody 2", 2025], ["Nocturnal Animals", 2016], ["Normal", 2025], ["The Northman", 2022], ["Novocaine", 2025], ["Now You See Me", 2013], ["Now You See Me 2", 2016], ["Now You See Me Now You Dont", 2025], ["The Nutcracker And The Four Realms", 2018], ["Ocean's Eight", 2018], ["The Odyssey", 2026], ["Off The Grid", 2025], ["Office Christmas Party", 2016], ["Office Space", 1999], ["Old", 2021], ["The Old Way", 2023], ["Omni Loop", 2024], ["Once Upon A Time In Venice", 2017], ["One Battle After Another", 2025], ["One More Shot", 2024], ["One Night Only", 2026], ["One Of Them Days", 2025], ["Onslaught", 2026], ["Onward", 2020], ["Oppenheimer", 2023], ["Osiris", 2025], ["The Outpost", 2020], ["Overboard", 2018], ["Pacific Rim 2 Uprising", 2018], ["Paint", 2023], ["Pan", 2015], ["Parallels", 2015], ["Passengers", 2016], ["Past Lives", 2023], ["Patriots Day", 2016], ["Paul Blart Mall Cop 2", 2015], ["PAW Patrol The Mighty Movie", 2023], ["Peaky Blinders The Immortal Man", 2026], ["The Peanuts Movie", 2015], ["Penguins of Madagascar", 2014], ["Peppermint", 2018], ["Pinocchio", 2020], ["Pirates of the Caribbean Dead Men Tell No Tales", 2017], ["Pitch Perfect 2", 2015], ["Pixels", 2015], ["Plane", 2023], ["Playing It Cool", 2014], ["Point Break", 2015], ["Poltergeist", 2015], ["Ponyo", 2008], ["The Popes Exorcist", 2023], ["Popstar Never Stop Never Stopping", 2016], ["Powder", 1995], ["Power Rangers", 2017], ["The Predator", 2018], ["Predator Badlands", 2025], ["Predator Killer Of Killers", 2025], ["Predestination", 2014], ["Pretty Baby", 1978], ["Prey", 2022], ["Pride and Prejudice and Zombies", 2016], ["Primate", 2026], ["Princess Mononoke", 1997], ["Problem Child", 1990], ["Problem Child 2", 1991], ["Project Hail Mary", 2026], ["Prometheus", 2012], ["Protector", 2026], ["The Protege", 2021], ["The Punisher One Last Kill", 2026], ["The Purge Election Year", 2016], ["Puss In Boots The Last Wish", 2022], ["The Quake", null], ["A Quiet Place", 2018], ["A Quiet Place Day One", 2024], ["A Quiet Place Part 2", 2021], ["Ralph Breaks the Internet", 2018], ["Rampage", 2018], ["Ready Or Not 2 Here I Come", 2026], ["A Real Pain", 2024], ["Rebel Moon Part One A Child of Fire", 2023], ["Redux Redux", 2025], ["Renegades", 2017], ["Renfield", 2023], ["Rental Family", 2025], ["Replicas", 2018], ["Resident Evil The Final Chapter", 2016], ["Resident Evil Welcome To Raccoon City", 2021], ["The Return", 2024], ["Reunion", 2024], ["The Revenant", 2015], ["Ride Along 2", 2016], ["The Rip", 2026], ["Risen", 2016], ["Road House", 1989], ["Road House", 2024], ["Robin Hood", 2018], ["Robot Overlords", 2014], ["Rogue Hostage", 2021], ["Rogue One: A Star Wars Story", 2016], ["Rons Gone Wrong", 2021], ["Room", 2015], ["Rough Night", 2017], ["Ruby Gillman Teenage Kraken", 2023], ["Run All Night", 2015], ["Run Hide Fight", 2021], ["Run Hide Fight: Infidels", 2026], ["Runner", 2026], ["Rush", 2013], ["Saltburn", 2023], ["San Andreas", 2015], ["San Andreas Quake", 2015], ["Sausage Party", 2016], ["Scarface", 1983], ["Scoob", 2020], ["Scream", 2022], ["Scream 7", 2026], ["The Secret Agent", 2025], ["The Secret Life of Pets", 2016], ["Self/less", 2015], ["Send Help", 2026], ["Sentimental Value", 2025], ["Seventh Son", 2014], ["The Shack", 2017], ["The Shallows", 2016], ["Shang Chi and the Legend of the Ten Rings", 2021], ["The Shape of Water", 2017], ["Shazam", 2019], ["Shazam Fury Of The Gods", 2023], ["The Sheep Detectives", 2026], ["Shelter", 2026], ["Shes Funny That Way", 2014], ["The Shift", 2023], ["Sicario", 2015], ["Sicario Day of the Soldado", 2018], ["Silence", 2016], ["Sing 2", 2021], ["Sinners", 2025], ["Sisters", 2015], ["Sisu", 2023], ["Skyscraper", 2018], ["Sleeping with Other People", 2015], ["Sleepless", 2017], ["Small Foot", 2018], ["Smile 2", 2024], ["Snake Eyes", 2021], ["Snatched", 2017], ["Snowden", 2016], ["Snowtime", 2015], ["Solo Mio", 2026], ["Solo: A Star Wars Story", 2018], ["Song of the Sea", 2014], ["Sonic The Hedgehog 2", 2022], ["Sound of Freedom", 2023], ["Southpaw", 2015], ["The Space Between Us", 2017], ["Space Jam A New Legacy", 2021], ["Spaceman", 2024], ["Spare Parts", 2015], ["Speak No Evil", 2024], ["Spectre", 2015], ["Spencer", 2021], ["Spider-Man", 2002], ["Spider-Man 2", 2004], ["Spider-Man 3", 2007], ["Spider-Man Across The Spider-Verse", 2023], ["Spider-Man Far from Home", 2019], ["Spider-Man Homecoming", 2017], ["Spider-Man No Way Home", 2021], ["Spider-Man: Brand New Day", 2026], ["Spider-Man: Into the Spider-Verse", 2018], ["Spirited Away", 2001], ["Split", 2016], ["The SpongeBob Movie Sponge Out Of Water", 2015], ["Spotlight", 2015], ["Spy", 2015], ["A Star Is Born", 2018], ["Star Trek Beyond", 2016], ["Star Wars: Episode I – The Phantom Menace", 1999], ["Star Wars: Episode II – Attack of the Clones", 2002], ["Star Wars: Episode III – Revenge of the Sith", 2005], ["Star Wars: Episode IV – A New Hope", 1977], ["Star Wars: Episode IX – The Rise of Skywalker", 2019], ["Star Wars: Episode V – The Empire Strikes Back", 1980], ["Star Wars: Episode VI – Return of the Jedi", 1983], ["Star Wars: Episode VII – The Force Awakens", 2015], ["Steve Jobs", 2015], ["Storks", 2016], ["Straight Outta Compton", 2015], ["Stretch", 2014], ["The Substance", 2024], ["Suicide Squad", 2016], ["Sully", 2016], ["Super Mario Bros", 1993], ["The Super Mario Bros Movie", 2023], ["The Super Mario Galaxy Movie", 2026], ["Super Troopers 2", 2018], ["Superfast!", 2015], ["SuperFly", 2018], ["Supergirl", 2026], ["Superman", 2025], ["Survive", 2022], ["Survivor", 2015], ["Swiss Army Man", 2016], ["Tad The Lost Explorer And The Emerald Tablet", 2022], ["Tag", 2018], ["The Take", 2016], ["Taken", 2008], ["Taken 2", 2012], ["Taken 3", 2014], ["Tammy", 2014], ["The Tax Collector", 2020], ["Ted 2", 2015], ["Teen Wolf", 1985], ["Teenage Mutant Ninja Turtles", 1990], ["Teenage Mutant Ninja Turtles", 2014], ["Teenage Mutant Ninja Turtles II: The Secret of the Ooze", 1991], ["Teenage Mutant Ninja Turtles III", 1993], ["Teenage Mutant Ninja Turtles Mutant Mayhem", 2023], ["Teenage Mutant Ninja Turtles Out of the Shadows", 2016], ["Teenage Sex and Death at Camp Miasma", 2026], ["Tenzing", 2026], ["Terminator Genisys", 2015], ["Terror on the Prairie", 2022], ["Tetris", 2023], ["The Theory of Everything", 2014], ["They Cloned Tyrone", 2023], ["Think Like a Man Too", 2014], ["Thor Love and Thunder", 2022], ["Thor Ragnarok", 2017], ["Thunderbolts", 2025], ["The Tigers Apprentice", 2024], ["To Catch A Killer", 2023], ["To End All War Oppenheimer The Atomic Bomb", 2023], ["Tomb Raider", 2018], ["Tomorrowland", 2015], ["Tony", 2026], ["Top Gun Maverick", 2022], ["Totally Killer", 2023], ["Toy Story 5", 2026], ["Tracers", 2015], ["Trading Places", 1983], ["Training Day", 2001], ["Transformers", 2007], ["Transformers Age Of Extinction", 2014], ["Transformers Dark Of The Moon", 2011], ["Transformers Revenge Of The Fallen", 2009], ["Transformers Rise of the Beasts", 2023], ["Transformers The Last Knight", 2017], ["Transfusion", 2023], ["The Transporter Refueled", 2015], ["Trap", 2024], ["Trap House", 2025], ["Triple 9", 2016], ["Troll", 2022], ["Trolls", 2016], ["Trolls Band Together", 2023], ["Trolls World Tour", 2020], ["Tron", 1982], ["Tron Ares", 2025], ["Tron Legacy", 2010], ["Troy", 2004], ["The Trust", 2016], ["Truth Or Dare", 2018], ["Twister", 1996], ["Twisters", 2024], ["The Unbearable Weight Of Massive Talent", 2022], ["Unbreakable", 2000], ["Unbroken", 2014], ["Uncharted", 2022], ["The Underdoggs", 2024], ["Underworld Blood Wars", 2017], ["Unfinished Business", 2015], ["Unhinged", 2020], ["Up", 2009], ["Upgrade", 2018], ["Vacation", 2015], ["Valerian and the City of a Thousand Planets", 2017], ["Vendetta", 2022], ["Venom", 2018], ["Venom Let There Be Carnage", 2021], ["Venom The Last Dance", 2024], ["Venus", 2022], ["Victor Frankenstein", 2015], ["Violent Night", 2022], ["Wake Up Dead Man A Knives Out Mystery", 2025], ["The Walk", 2015], ["War Dogs", 2016], ["War For The Planet Of The Apes", 2017], ["War Machine", 2026], ["War Room", 2015], ["Warcraft", 2016], ["Warfare", 2025], ["Warriors Gate", 2016], ["The Way Back", 2020], ["We Bury The Dead", 2026], ["We Live In Time", 2024], ["The Wedding Ringer", 2015], ["The Whale", 2022], ["What is a Woman", 2022], ["Where the Wild Things Are", 2009], ["Whiplash", 2014], ["Whiskey Tango Foxtrot", 2016], ["The Whisper Man", 2026], ["White Boy Rick", 2018], ["Why Him", 2016], ["Wicked", 2024], ["Wild Card", 2015], ["The Wild Life", 2016], ["The Wild Robot", 2024], ["Wish", 2023], ["The Witch", 2015], ["Wolfs", 2024], ["The Woman King", 2022], ["Women Talking", 2022], ["Wonder Woman", 2017], ["Wonka", 2023], ["Wrath Of Man", 2021], ["Wuthering Heights", 2026], ["X", 2022], ["X-Men: Apocalypse", 2016], ["xXx Return Of Xander Cage", 2017], ["Zoolander 2", 2016], ["Zootopia", 2016], ["Zootopia 2", 2025]], "shows": [["The Acolyte", "S1"], ["Ahsoka", ""], ["Alien: Earth", "S1, eps 1–8"], ["Andor", "S1–S2"], ["Batman: Caped Crusader", "S1"], ["Billions", "S1–S7"], ["Daredevil: Born Again", "S1–S2"], ["Dexter: Resurrection", "S1"], ["Dragon Ball", "complete series"], ["Dragon Ball Super", "ep. 001"], ["Dragon Ball Z", "S1 – Saiyan Saga"], ["Dune: Prophecy", ""], ["Dutton Ranch", "S1, eps 1–2"], ["Echo", ""], ["Echo 3", "S1"], ["Extrapolations", "S1"], ["For All Mankind", ""], ["Halo", ""], ["House of the Dragon", ""], ["Ironheart", "S1"], ["A Knight of the Seven Kingdoms", ""], ["The Last of Us", ""], ["Loki", ""], ["Monarch: Legacy of Monsters", ""], ["Mr. & Mrs. Smith", "2024, S1"], ["The Old Man", ""], ["The Pendragon Cycle: Rise of the Merlin", "S1"], ["Planet Earth II", "S1E01"], ["Raised by Wolves", ""], ["See", ""], ["Severance", "S1"], ["Shōgun", ""], ["Silo", ""], ["Spartacus: House of Ashur", ""], ["Star Wars: Skeleton Crew", "S1"], ["Those About to Die", "S1"], ["Twisted Metal", "S1"], ["Vanished", "2026, S1 eps 1–4"], ["WeCrashed", "S1"], ["What If…?", "incl. S3"], ["Wonder Man", "S1"], ["X-Men '97", ""], ["Yellowstone", "2018"], ["YS One Fifty", "documentary"]], "specials": [["Chris Rock Selective Outrage", 2023], ["Kevin Hart What Now All Access", 2016], ["Mayweather vs McGregor Match", null], ["UFC 213 Romero vs Whittaker PPV", null], ["UFC 309 Jones vs Miocic PPV", null]]};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>s.toLowerCase().replace(/\(\d{4}\)/,'').replace(/^(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'');
+
+/* already-in-library hint */
+const INDEX=[...LIB.movies,...LIB.shows].map(([t,y])=>({k:norm(t),label:y?`${t} (${y})`:t}));
+const fTitle=document.getElementById('f-title'), fHint=document.getElementById('f-hint');
+fTitle.oninput=()=>{
+  const k=norm(fTitle.value); fHint.className='hint'; fHint.textContent='';
+  if(k.length<3) return;
+  const exact=INDEX.filter(x=>x.k===k);
+  const close=exact.length?exact:INDEX.filter(x=>x.k.startsWith(k)).slice(0,3);
+  if(exact.length){fHint.className='hint have';fHint.textContent='Already in the library: '+exact.map(x=>x.label).join(', ');}
+  else if(close.length){fHint.textContent='In the library: '+close.map(x=>x.label).join(', ');}
+};
+
+/* remember name/email on this device */
+const remember=['f-name','f-email'];
+remember.forEach(id=>{try{const v=localStorage.getItem(id);if(v)document.getElementById(id).value=v;}catch(e){}});
+
+/* submit to Google Form */
+const statusEl=document.getElementById('f-status'), sendBtn=document.getElementById('f-send');
+let pending=[];
+document.getElementById('form').onsubmit=async e=>{
+  e.preventDefault();
+  const title=fTitle.value.trim();
+  if(!title){statusEl.textContent='Type the name of the movie or show first.';fTitle.focus();return;}
+  const v={kind:document.getElementById('f-kind').value,title,note:document.getElementById('f-note').value.trim(),
+    name:document.getElementById('f-name').value.trim(),email:document.getElementById('f-email').value.trim()};
+  remember.forEach(id=>{try{localStorage.setItem(id,document.getElementById(id).value.trim());}catch(e){}});
+  const body=new URLSearchParams(); Object.entries(F).forEach(([k,name])=>body.append(name,v[k]));
+  sendBtn.disabled=true; statusEl.textContent='Sending…';
+  try{
+    await fetch(FORM_URL,{method:'POST',mode:'no-cors',body});
+    statusEl.textContent=`Sent. Miguel will get an email about “${title}”.`;
+    pending.unshift({ts:new Date(),kind:v.kind,title,note:v.note,name:v.name,status:'',eta:'',reply:'',local:true});
+    fTitle.value='';document.getElementById('f-note').value='';fHint.textContent='';
+    render();
+  }catch(err){ statusEl.textContent='That didn’t go through. Check your connection and try again.'; }
+  finally{ sendBtn.disabled=false; }
+};
+
+/* request board from the published sheet */
+function parseCSV(s){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<s.length;i++){const c=s[i];
+    if(q){ if(c==='"'){ if(s[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===','){row.push(f);f='';}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&s[i+1]==='\n') i++; row.push(f);rows.push(row);row=[];f=''; }
+    else f+=c; }
+  if(f||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+const STATUS_CLASS=s=>{const x=(s||'').toLowerCase();
+  if(!x||x.includes('request')||x==='new') return ['new','Requested'];
+  if(x.includes('avail')||x.includes('ready')||x.includes('done')) return ['ready',s];
+  if(x.includes("can't")||x.includes('cant')||x.includes('not')||x.includes('unavail')) return ['unavailable',s];
+  return ['working',s];};
+let board=[], filter='open', loaded=false, loadErr=false;
+async function load(){
+  if(BOARD_CSV.startsWith('__')){loadErr=true;render();return;}
+  try{
+    const r=await fetch(BOARD_CSV+(BOARD_CSV.includes('?')?'&':'?')+'t='+Date.now());
+    const rows=parseCSV(await r.text()).slice(1).filter(r=>r[2]);
+    board=rows.map(r=>({ts:r[0],kind:r[1],title:r[2],note:r[3],name:r[4],status:r[5],eta:r[6],reply:r[7]})).reverse();
+    pending=pending.filter(p=>!board.some(b=>b.title===p.title&&b.name===p.name));
+    loaded=true; loadErr=false;
+  }catch(e){loadErr=true;}
+  render();
+}
+function render(){
+  const el=document.getElementById('reqs');
+  let items=[...pending,...board];
+  if(filter==='open') items=items.filter(x=>{const c=STATUS_CLASS(x.status)[0];return c==='new'||c==='working';});
+  if(!items.length){
+    el.innerHTML=`<p class="empty">${loadErr?'The request board isn’t available right now. Requests still go through.':loaded?(filter==='open'?'No open requests right now.':'No requests yet.'):'Loading requests…'}</p>`;
+    return;
+  }
+  el.innerHTML=items.map(x=>{
+    const [cls,label]=STATUS_CLASS(x.status);
+    const when=x.ts instanceof Date?'just now':esc(String(x.ts).split(' ')[0]);
+    return `<article class="req">
+      <div class="req-top"><span class="req-title">${esc(x.title)}${/tv/i.test(x.kind)?' <span class="meta">· TV</span>':''}</span><span class="pill s-${cls}">${esc(label)}</span></div>
+      <div class="meta">${x.name?esc(x.name)+' · ':''}Asked ${when}${x.eta?' · ETA '+esc(x.eta):''}</div>
+      ${x.note?`<div class="meta">“${esc(x.note)}”</div>`:''}
+      ${x.reply?`<div class="reply"><b>Miguel:</b> ${esc(x.reply)}</div>`:''}
+    </article>`;
+  }).join('');
+}
+document.querySelectorAll('#filters .chip').forEach(c=>c.onclick=()=>{
+  filter=c.dataset.f;document.querySelectorAll('#filters .chip').forEach(x=>x.setAttribute('aria-pressed',x===c));render();});
+load(); setInterval(load,60000);
+</script>
+
+</body>
+</html>
