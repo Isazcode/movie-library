@@ -95,6 +95,7 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
 .abtn.done{background:var(--ok);border-color:var(--ok);color:var(--bg)}
 .abtn:hover{filter:brightness(1.08)}
 .abtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 </style>
 </head>
 <body style="margin:0">
@@ -202,11 +203,13 @@ function parseCSV(s){
   if(f||row.length){row.push(f);rows.push(row);}
   return rows;
 }
-const STATUS_CLASS=s=>{const x=(s||'').toLowerCase();
+const STATUS_CLASS=(s,reply)=>{let x=(s||'').toLowerCase(); if(!x && /^\s*(done|ready|available)/i.test(reply||'')) return ['ready','Available now'];
   if(!x||x.includes('request')||x==='new') return ['new','Requested'];
   if(x.includes('avail')||x.includes('ready')||x.includes('done')) return ['ready',s];
   if(x.includes("can't")||x.includes('cant')||x.includes('not')||x.includes('unavail')) return ['unavailable',s];
   return ['working',s];};
+function getOv(){try{return JSON.parse(localStorage.getItem('mr-ov')||'{}')}catch(e){return {}}}
+function setOv(o){try{localStorage.setItem('mr-ov',JSON.stringify(o))}catch(e){}}
 let board=[], filter='open', loaded=false, loadErr=false;
 async function load(){
   if(BOARD_CSV.startsWith('__')){loadErr=true;render();return;}
@@ -215,6 +218,10 @@ async function load(){
     const rows=parseCSV(await r.text()).slice(1).filter(r=>r[2]);
     board=rows.map(r=>({ts:r[0],kind:r[1],title:r[2],note:r[3],name:r[4],status:r[5],eta:r[6],reply:r[7]})).reverse();
     pending=pending.filter(p=>!board.some(b=>b.title===p.title&&b.name===p.name));
+    const ov=getOv(), now=Date.now(); let changed=false;
+    Object.keys(ov).forEach(k=>{ const b=board.find(x=>x.ts===k); const o=ov[k];
+      if(!b || b.status===o.status || now-o.at>30*60*1000){ delete ov[k]; changed=true; } else b.status=o.status; });
+    if(changed) setOv(ov);
     loaded=true; loadErr=false;
   }catch(e){loadErr=true;}
   render();
@@ -222,13 +229,13 @@ async function load(){
 function render(){
   const el=document.getElementById('reqs');
   let items=[...pending,...board];
-  if(filter==='open') items=items.filter(x=>{const c=STATUS_CLASS(x.status)[0];return c==='new'||c==='working';});
+  if(filter==='open') items=items.filter(x=>{const c=STATUS_CLASS(x.status,x.reply)[0];return c==='new'||c==='working';});
   if(!items.length){
     el.innerHTML=`<p class="empty">${loadErr?'The request board isn’t available right now. Requests still go through.':loaded?(filter==='open'?'No open requests right now.':'No requests yet.'):'Loading requests…'}</p>`;
     return;
   }
   el.innerHTML=items.map(x=>{
-    const [cls,label]=STATUS_CLASS(x.status);
+    const [cls,label]=STATUS_CLASS(x.status,x.reply);
     const when=x.ts instanceof Date?'just now':esc(String(x.ts).split(' ')[0]);
     return `<article class="req">
       <div class="req-top"><span class="req-title">${esc(x.title)}${/tv/i.test(x.kind)?' <span class="meta">· TV</span>':''}</span><span class="pill s-${cls}">${esc(label)}</span></div>
@@ -243,9 +250,13 @@ document.querySelectorAll('#filters .chip').forEach(c=>c.onclick=()=>{
   filter=c.dataset.f;document.querySelectorAll('#filters .chip').forEach(x=>x.setAttribute('aria-pressed',x===c));render();});
 document.getElementById('reqs').addEventListener('click',e=>{
   const a=e.target.closest('.abtn'); if(!a) return;
-  const it=board.find(b=>b.ts===a.dataset.ts); if(it){ it.status=a.dataset.st; setTimeout(render,50); }
+  const it=board.find(b=>b.ts===a.dataset.ts); if(!it) return;
+  it.status=a.dataset.st; const ov=getOv(); ov[it.ts]={status:a.dataset.st,at:Date.now()}; setOv(ov);
+  toast(`“${it.title}” set to ${a.dataset.st}. Family will see it within about 5 minutes.`);
+  setTimeout(render,50);
 });
 if(ADMIN){ const h=document.querySelector('#reqs').previousElementSibling.querySelector('h2'); if(h) h.textContent='Request board · admin'; }
+function toast(msg){let t=document.getElementById('toast'); if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');document.body.appendChild(t);} t.textContent=msg; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>t.hidden=true,5000);}
 load(); setInterval(load,60000);
 </script>
 
