@@ -56,6 +56,18 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
 .empty{color:var(--muted);padding:30px 0}
 footer{color:var(--muted);font-size:13px;padding-block:0 30px}
 @media (max-width:520px){.group{grid-template-columns:1fr}.letter{font-size:30px;margin-bottom:4px}}
+
+.recent{background:var(--surface);border-bottom:1px solid var(--line)}
+.recent .wrap{padding-block:22px 24px;display:flex;flex-direction:column;gap:14px}
+.recent-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.recent h2{font-family:var(--display);font-weight:800;font-size:28px;line-height:1;margin:0;text-transform:uppercase;letter-spacing:.01em}
+.recent-sub{font-size:13px;color:var(--muted)}
+.shelf{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.ticket{position:relative;display:flex;flex-direction:column;gap:6px;padding:14px 16px 14px 18px;border-radius:10px;background:var(--bg);border:1px solid var(--line);min-width:0}
+.ticket::before{content:"";position:absolute;left:-7px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:var(--surface);border:1px solid var(--line)}
+.ticket .tt{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.ticket .tm{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+.new{font:700 10px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:2px}
 </style>
 </head>
 <body style="margin:0">
@@ -65,6 +77,11 @@ footer{color:var(--muted);font-size:13px;padding-block:0 30px}
   <h1>Miguel's Movie Library</h1>
   <div class="stats" id="stats"></div>
 </div></header>
+
+<section class="recent" aria-labelledby="recent-h"><div class="wrap">
+  <div class="recent-head"><h2 id="recent-h">Recently added</h2><span class="recent-sub" id="recent-sub"></span></div>
+  <ol class="shelf" id="shelf"></ol>
+</div></section>
 
 <div class="bar"><div class="wrap">
   <div class="tabs" role="tablist">
@@ -87,6 +104,15 @@ try{const h=location.hash.slice(1); if(LIB[h]) cur=h;}catch(e){}
 const strip=t=>t.replace(/^(the|a|an)\s+/i,'');
 const letterOf=t=>{const c=strip(t)[0].toUpperCase(); return /[A-Z]/.test(c)?c:'#';};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const RECENT = [{"t": "Fall 2: Deadpoint", "y": 2026, "k": "movie", "d": "2026-10-27"}, {"t": "Verity", "y": 2026, "k": "movie", "d": "2026-10-27"}, {"t": "PAW Patrol: The Dino Movie", "y": 2026, "k": "movie", "d": "2026-10-27"}, {"t": "Tad and the Magic Lamp", "y": 2026, "k": "movie", "d": "2026-10-27"}, {"t": "Forgotten Island", "y": 2026, "k": "movie", "d": "2026-10-27"}, {"t": "Matchbox: The Movie", "y": 2025, "k": "movie", "d": "2026-10-27"}];
+const NEW_DAYS = 30;
+const recentKeys = new Set(RECENT.filter(r=>(Date.now()-new Date(r.d+'T12:00:00'))/864e5<=NEW_DAYS).map(r=>r.t.toLowerCase()+'|'+r.y));
+(function renderRecent(){
+  const items=[...RECENT].sort((a,b)=>b.d.localeCompare(a.d)).slice(0,12);
+  const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  document.getElementById('shelf').innerHTML=items.map(r=>`<li class="ticket"><span class="tt">${esc(r.t)}</span><span class="tm"><span>${r.k==='show'?'TV · ':''}${r.y??''}</span><span>Added ${fmt(r.d)}</span></span></li>`).join('');
+  document.getElementById('recent-sub').textContent=items.length+' new title'+(items.length===1?'':'s')+' · newest first';
+})();
 document.getElementById('stats').innerHTML=
   `<span><b>${LIB.movies.length}</b>movies</span><span><b>${LIB.shows.length}</b>TV shows</span><span><b>${LIB.specials.length}</b>specials</span>`;
 document.querySelectorAll('.tabs button').forEach(b=>{
@@ -107,7 +133,7 @@ function render(){
   const list=document.getElementById('list');
   if(!rows.length){list.innerHTML=`<p class="empty">Nothing in ${labels[cur]} matches “${esc(q.value)}”.</p>`;return;}
   list.innerHTML=letters.map(l=>`<section class="group" id="L-${l==='#'?'0':l}"><div class="letter">${l}</div><ul>${
-    groups[l].map(([t,y])=>`<li><span class="t">${esc(t)}</span><span class="y">${y??''}</span></li>`).join('')}</ul></section>`).join('');
+    groups[l].map(([t,y])=>`<li><span class="t">${esc(t)}${recentKeys.has(t.toLowerCase()+'|'+y)?'<span class="new">New</span>':''}</span><span class="y">${y??''}</span></li>`).join('')}</ul></section>`).join('');
 }
 render();
 </script>
