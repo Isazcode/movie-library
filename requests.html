@@ -96,6 +96,7 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
 .abtn:hover{filter:brightness(1.08)}
 .abtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.pill.s-more{background:var(--info-soft);color:var(--info)}
 </style>
 </head>
 <body style="margin:0">
@@ -162,6 +163,8 @@ fTitle.oninput=()=>{
   if(k.length<3) return;
   const exact=INDEX.filter(x=>x.k===k);
   const close=exact.length?exact:INDEX.filter(x=>x.k.startsWith(k)).slice(0,3);
+  const g=typeof findGroup==='function'?findGroup(fTitle.value):null;
+  if(g){const [c,l]=STATUS_CLASS(g.status,g.reply); fHint.className='hint have'; fHint.textContent=`Already requested by ${namesText(g)} (${l}). You can add yourself with “Me too”.`; return;}
   if(exact.length){fHint.className='hint have';fHint.textContent='Already in the library: '+exact.map(x=>x.label).join(', ');}
   else if(close.length){fHint.textContent='In the library: '+close.map(x=>x.label).join(', ');}
 };
@@ -173,23 +176,37 @@ remember.forEach(id=>{try{const v=localStorage.getItem(id);if(v)document.getElem
 /* submit to Google Form */
 const statusEl=document.getElementById('f-status'), sendBtn=document.getElementById('f-send');
 let pending=[];
-document.getElementById('form').onsubmit=async e=>{
-  e.preventDefault();
-  const title=fTitle.value.trim();
-  if(!title){statusEl.textContent='Type the name of the movie or show first.';fTitle.focus();return;}
-  const v={kind:document.getElementById('f-kind').value,title,note:document.getElementById('f-note').value.trim(),
-    name:document.getElementById('f-name').value.trim(),email:document.getElementById('f-email').value.trim()};
+function formVals(){return {kind:document.getElementById('f-kind').value,title:fTitle.value.trim(),note:document.getElementById('f-note').value.trim(),
+  name:document.getElementById('f-name').value.trim(),email:document.getElementById('f-email').value.trim()};}
+async function send(v,meToo){
   remember.forEach(id=>{try{localStorage.setItem(id,document.getElementById(id).value.trim());}catch(e){}});
-  const body=new URLSearchParams(); Object.entries(F).forEach(([k,name])=>body.append(name,v[k]));
+  const body=new URLSearchParams(); Object.entries(F).forEach(([k,name])=>body.append(name,v[k]||''));
   sendBtn.disabled=true; statusEl.textContent='Sending…';
   try{
     await fetch(FORM_URL,{method:'POST',mode:'no-cors',body});
-    statusEl.textContent=`Sent. Miguel will get an email about “${title}”.`;
-    pending.unshift({ts:new Date(),kind:v.kind,title,note:v.note,name:v.name,status:'',eta:'',reply:'',local:true});
-    fTitle.value='';document.getElementById('f-note').value='';fHint.textContent='';
+    statusEl.textContent=meToo?`Added. Miguel will see that you want “${v.title}” too.`:`Sent. Miguel will get an email about “${v.title}”.`;
+    pending.unshift({ts:new Date(),kind:v.kind,title:v.title,note:v.note,name:v.name,status:'',eta:'',reply:'',local:true});
+    fTitle.value='';document.getElementById('f-note').value='';fHint.textContent='';fHint.className='hint';
     render();
   }catch(err){ statusEl.textContent='That didn’t go through. Check your connection and try again.'; }
   finally{ sendBtn.disabled=false; }
+}
+function namesText(g){const n=g.names; if(!n.length) return 'someone'; if(n.length===1) return n[0]; if(n.length===2) return n[0]+' and '+n[1]; return n.slice(0,-1).join(', ')+' and '+n[n.length-1];}
+document.getElementById('form').onsubmit=e=>{
+  e.preventDefault();
+  const v=formVals();
+  if(!v.title){statusEl.textContent='Type the name of the movie or show first.';fTitle.focus();return;}
+  const g=findGroup(v.title);
+  if(g){
+    const [cls,label]=STATUS_CLASS(g.status,g.reply);
+    const me=v.name&&g.names.some(n=>n.toLowerCase()===v.name.toLowerCase());
+    if(cls==='ready'){ statusEl.innerHTML=`“${esc(g.title)}” was already requested and is <b>available now</b>. Check the library.`; return; }
+    if(me){ statusEl.innerHTML=`You already asked for “${esc(g.title)}”. It’s on the board below (${esc(label)}).`; return; }
+    statusEl.innerHTML=`“${esc(g.title)}” is already requested by ${esc(namesText(g))} (${esc(label)}). Want it too? <button type="button" class="btn small" id="metoo">Me too</button>`;
+    document.getElementById('metoo').onclick=()=>send({kind:g.kind||v.kind,title:g.title,note:v.note?('Me too. '+v.note):'Me too',name:v.name,email:v.email},true);
+    return;
+  }
+  send(v,false);
 };
 
 /* request board from the published sheet */
@@ -210,25 +227,41 @@ const STATUS_CLASS=(s,reply)=>{let x=(s||'').toLowerCase(); if(!x && /^\s*(done|
   return ['working',s];};
 function getOv(){try{return JSON.parse(localStorage.getItem('mr-ov')||'{}')}catch(e){return {}}}
 function setOv(o){try{localStorage.setItem('mr-ov',JSON.stringify(o))}catch(e){}}
-let board=[], filter='open', loaded=false, loadErr=false;
+let board=[], groups=[], filter='open', loaded=false, loadErr=false;
+/* one card per title: duplicates become "N people want this" */
+function buildGroups(){
+  const map=new Map();
+  [...pending,...board].forEach(r=>{ const k=norm(r.title); if(!k) return;
+    let g=map.get(k); if(!g){ g={key:k,rows:[],names:[],title:r.title,kind:r.kind,status:'',eta:'',reply:'',note:'',ts:r.ts,first:r.ts,local:true}; map.set(k,g); }
+    g.rows.push(r); if(!r.local) g.local=false;
+    if(r.name&&!g.names.some(n=>n.toLowerCase()===r.name.toLowerCase())) g.names.push(r.name);
+    if(!g.status&&r.status) g.status=r.status; if(!g.eta&&r.eta) g.eta=r.eta; if(!g.reply&&r.reply) g.reply=r.reply;
+    if(!g.note&&r.note&&!/^me too\.?$/i.test(r.note)) g.note=r.note.replace(/^me too\.\s*/i,'');
+    if(!r.local){ g.title=r.title; g.kind=r.kind||g.kind; g.first=r.ts; }  /* rows are newest first, so this ends on the oldest */
+  });
+  groups=[...map.values()];
+  groups.forEach(g=>{ g.names.reverse(); });
+  const ov=getOv(), now=Date.now(); let changed=false;
+  Object.keys(ov).forEach(k=>{ const g=groups.find(x=>x.key===k); const o=ov[k];
+    if(!g || g.status===o.status || now-o.at>30*60*1000){ delete ov[k]; changed=true; } else g.status=o.status; });
+  if(changed) setOv(ov);
+}
+function findGroup(title){ const k=norm(title); return k?groups.find(g=>g.key===k):null; }
 async function load(){
   if(BOARD_CSV.startsWith('__')){loadErr=true;render();return;}
   try{
     const r=await fetch(BOARD_CSV+(BOARD_CSV.includes('?')?'&':'?')+'t='+Date.now());
     const rows=parseCSV(await r.text()).slice(1).filter(r=>r[2]);
     board=rows.map(r=>({ts:r[0],kind:r[1],title:r[2],note:r[3],name:r[4],status:r[5],eta:r[6],reply:r[7]})).reverse();
-    pending=pending.filter(p=>!board.some(b=>b.title===p.title&&b.name===p.name));
-    const ov=getOv(), now=Date.now(); let changed=false;
-    Object.keys(ov).forEach(k=>{ const b=board.find(x=>x.ts===k); const o=ov[k];
-      if(!b || b.status===o.status || now-o.at>30*60*1000){ delete ov[k]; changed=true; } else b.status=o.status; });
-    if(changed) setOv(ov);
+    pending=pending.filter(p=>!board.some(b=>norm(b.title)===norm(p.title)&&b.name===p.name));
     loaded=true; loadErr=false;
   }catch(e){loadErr=true;}
   render();
 }
 function render(){
+  buildGroups();
   const el=document.getElementById('reqs');
-  let items=[...pending,...board];
+  let items=groups;
   if(filter==='open') items=items.filter(x=>{const c=STATUS_CLASS(x.status,x.reply)[0];return c==='new'||c==='working';});
   if(!items.length){
     el.innerHTML=`<p class="empty">${loadErr?'The request board isn’t available right now. Requests still go through.':loaded?(filter==='open'?'No open requests right now.':'No requests yet.'):'Loading requests…'}</p>`;
@@ -236,13 +269,14 @@ function render(){
   }
   el.innerHTML=items.map(x=>{
     const [cls,label]=STATUS_CLASS(x.status,x.reply);
-    const when=x.ts instanceof Date?'just now':esc(String(x.ts).split(' ')[0]);
+    const when=x.first instanceof Date?'just now':esc(String(x.first).split(' ')[0]);
+    const n=x.names.length>1?x.names.length:x.rows.length;
     return `<article class="req">
-      <div class="req-top"><span class="req-title">${esc(x.title)}${/tv/i.test(x.kind)?' <span class="meta">· TV</span>':''}</span><span class="pill s-${cls}">${esc(label)}</span></div>
-      <div class="meta">${x.name?esc(x.name)+' · ':''}Asked ${when}${x.eta?' · ETA '+esc(x.eta):''}</div>
+      <div class="req-top"><span class="req-title">${esc(x.title)}${/tv/i.test(x.kind)?' <span class="meta">· TV</span>':''}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${n>1?`<span class="pill s-more">${n} people want this</span>`:''}<span class="pill s-${cls}">${esc(label)}</span></span></div>
+      <div class="meta">${x.names.length?esc(namesText(x))+' · ':''}First asked ${when}${x.eta?' · ETA '+esc(x.eta):''}</div>
       ${x.note?`<div class="meta">“${esc(x.note)}”</div>`:''}
       ${x.reply?`<div class="reply"><b>Miguel:</b> ${esc(x.reply)}</div>`:''}
-      ${ADMIN&&!x.local?`<div class="admin-row">${[['Available now','✓ Mark done','done'],['Working on it','Working on it','work'],["Can't get it","Can't get it",'nope']].map(([st,lbl,c])=>`<a class="abtn ${c}" target="_blank" rel="noopener" data-st="${esc(st)}" data-ts="${esc(x.ts)}" href="${ADMIN_URL}?${new URLSearchParams({ts:x.ts,title:x.title,status:st})}">${lbl}</a>`).join('')}</div>`:''}
+      ${ADMIN&&!x.local?`<div class="admin-row">${[['Available now','✓ Mark done','done'],['Working on it','Working on it','work'],["Can't get it","Can't get it",'nope']].map(([st,lbl,c])=>`<a class="abtn ${c}" target="_blank" rel="noopener" data-st="${esc(st)}" data-key="${esc(x.key)}" href="${ADMIN_URL}?${new URLSearchParams({ts:x.rows.filter(r=>!r.local).slice(-1)[0].ts,title:x.title,status:st,all:'1'})}">${lbl}</a>`).join('')}</div>`:''}
     </article>`;
   }).join('');
 }
@@ -250,9 +284,9 @@ document.querySelectorAll('#filters .chip').forEach(c=>c.onclick=()=>{
   filter=c.dataset.f;document.querySelectorAll('#filters .chip').forEach(x=>x.setAttribute('aria-pressed',x===c));render();});
 document.getElementById('reqs').addEventListener('click',e=>{
   const a=e.target.closest('.abtn'); if(!a) return;
-  const it=board.find(b=>b.ts===a.dataset.ts); if(!it) return;
-  it.status=a.dataset.st; const ov=getOv(); ov[it.ts]={status:a.dataset.st,at:Date.now()}; setOv(ov);
-  toast(`“${it.title}” set to ${a.dataset.st}. Family will see it within about 5 minutes.`);
+  const g=groups.find(x=>x.key===a.dataset.key); if(!g) return;
+  const ov=getOv(); ov[g.key]={status:a.dataset.st,at:Date.now()}; setOv(ov);
+  toast(`“${g.title}” set to ${a.dataset.st}. Family will see it within about 5 minutes.`);
   setTimeout(render,50);
 });
 if(ADMIN){ const h=document.querySelector('#reqs').previousElementSibling.querySelector('h2'); if(h) h.textContent='Request board · admin'; }
