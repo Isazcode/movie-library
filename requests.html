@@ -97,6 +97,19 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
 .abtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .pill.s-more{background:var(--info-soft);color:var(--info)}
+.sug-wrap{position:relative;display:block}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;list-style:none;margin:0;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:min(420px,60vh);overflow-y:auto;columns:auto}
+.sug-item{display:flex;justify-content:flex-start;gap:10px;align-items:center;padding:6px 8px;border-radius:8px;cursor:pointer;border:0;font-weight:400;color:var(--fg)}
+.sug-item.active,.sug-item:hover{background:var(--accent-soft)}
+.sug-img{flex:0 0 32px;width:32px;height:46px;border-radius:4px;background:var(--line);overflow:hidden}
+.sug-img img{width:100%;height:100%;object-fit:cover;display:block}
+.sug-txt{display:flex;flex-direction:column;min-width:0}
+.sug-title{font-weight:600;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
+.sug-meta{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sug-tag{font:700 10px var(--body);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.sug-tag.have{background:var(--ok-soft);color:var(--ok)}
+.sug-tag.req{background:var(--info-soft);color:var(--info)}
+.sug-foot{font-size:11px;color:var(--muted);padding:6px 8px 4px;border:0}
 </style>
 </head>
 <body style="margin:0">
@@ -111,7 +124,7 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
     <h2>Request a title</h2>
     <div class="grid2">
       <label for="f-title">Movie or show
-        <input id="f-title" required maxlength="140" placeholder="e.g. Jaws (1975)" autocomplete="off">
+        <span class="sug-wrap"><input id="f-title" required maxlength="140" placeholder="Start typing, e.g. Jaws" autocomplete="off" spellcheck="false"><ul id="f-sug" class="sug" role="listbox" aria-label="Title suggestions" hidden></ul></span>
       </label>
       <label for="f-kind">Type
         <select id="f-kind"><option value="Movie">Movie</option><option value="TV show">TV show</option></select>
@@ -168,6 +181,76 @@ fTitle.oninput=()=>{
   if(exact.length){fHint.className='hint have';fHint.textContent='Already in the library: '+exact.map(x=>x.label).join(', ');}
   else if(close.length){fHint.textContent='In the library: '+close.map(x=>x.label).join(', ');}
 };
+
+/* live title search (IMDb suggestions) */
+const sugBox=document.getElementById('f-sug'), fKind=document.getElementById('f-kind');
+const TYPES={movie:'Movie',tvSeries:'TV series',tvMiniSeries:'TV mini-series',tvMovie:'TV movie',tvSpecial:'TV special',video:'Video'};
+let sugItems=[], sugActive=-1, sugTimer=null, sugSeq=0;
+function imdbJsonp(q){
+  return new Promise((resolve,reject)=>{
+    const key=q.toLowerCase().replace(/[^a-z0-9 ]/g,'').trim().replace(/\s+/g,'_').slice(0,20);
+    if(!key) return resolve({d:[]});
+    const cb='imdb$'+key, s=document.createElement('script');
+    const done=v=>{ try{delete window[cb]}catch(e){window[cb]=undefined} s.remove(); clearTimeout(t); v?resolve(v):reject(); };
+    const t=setTimeout(()=>done(null),6000);
+    window[cb]=data=>done(data||{d:[]});
+    s.onerror=()=>done(null);
+    s.src='https://sg.media-imdb.com/suggests/'+key[0]+'/'+encodeURIComponent(key)+'.json';
+    document.head.appendChild(s);
+  });
+}
+async function imdbSearch(q){
+  try{
+    const r=await fetch('https://v3.sg.media-imdb.com/suggestion/x/'+encodeURIComponent(q.toLowerCase())+'.json');
+    if(!r.ok) throw 0; return await r.json();
+  }catch(e){ return imdbJsonp(q); }
+}
+function poster(u){ return u?u.replace(/\._V1_.*\.jpg$/,'._V1_UX64_.jpg'):''; }
+function closeSug(){ sugBox.hidden=true; sugActive=-1; fTitle.setAttribute('aria-expanded','false'); fTitle.removeAttribute('aria-activedescendant'); }
+function renderSug(){
+  if(!sugItems.length){ closeSug(); return; }
+  sugBox.innerHTML=sugItems.map((x,i)=>{
+    const inLib=INDEX.some(e=>e.k===norm(x.l));
+    const g=typeof findGroup==='function'?findGroup(x.l):null;
+    const tag=inLib?'<span class="sug-tag have">In library</span>':g?'<span class="sug-tag req">Requested</span>':'';
+    const img=poster(x.i&&(x.i.imageUrl||x.i[0]));
+    return `<li role="option" id="sug-${i}" class="sug-item${i===sugActive?' active':''}" aria-selected="${i===sugActive}" data-i="${i}">
+      <span class="sug-img">${img?`<img src="${esc(img)}" alt="" loading="lazy">`:''}</span>
+      <span class="sug-txt"><span class="sug-title">${esc(x.l)}${tag}</span>
+      <span class="sug-meta">${esc([x.y,TYPES[x.qid]||x.q].filter(Boolean).join(' · '))}${x.s?' · '+esc(x.s):''}</span></span></li>`;
+  }).join('')+'<li class="sug-foot" aria-hidden="true">Suggestions from IMDb · keep typing if you don’t see it</li>';
+  sugBox.hidden=false; fTitle.setAttribute('aria-expanded','true');
+  if(sugActive>=0) fTitle.setAttribute('aria-activedescendant','sug-'+sugActive); else fTitle.removeAttribute('aria-activedescendant');
+}
+function pickSug(i){
+  const x=sugItems[i]; if(!x) return;
+  fTitle.value=x.l+(x.y?' ('+x.y+')':'');
+  fKind.value=/^tv(Series|MiniSeries)$/.test(x.qid)?'TV show':'Movie';
+  closeSug(); fTitle.oninput(); fTitle.focus();
+}
+fTitle.setAttribute('role','combobox'); fTitle.setAttribute('aria-autocomplete','list');
+fTitle.setAttribute('aria-controls','f-sug'); fTitle.setAttribute('aria-expanded','false');
+fTitle.addEventListener('input',()=>{
+  clearTimeout(sugTimer);
+  const q=fTitle.value.trim();
+  if(q.length<2){ sugItems=[]; closeSug(); return; }
+  sugTimer=setTimeout(async()=>{
+    const my=++sugSeq;
+    let data; try{ data=await imdbSearch(q.replace(/\(\d{4}\)\s*$/,'').trim()); }catch(e){ data=null; }
+    if(my!==sugSeq) return;
+    sugItems=((data&&data.d)||[]).filter(x=>x.l&&TYPES[x.qid]).slice(0,7);
+    sugActive=-1; renderSug();
+  },220);
+});
+fTitle.addEventListener('keydown',e=>{
+  if(sugBox.hidden||!sugItems.length) return;
+  if(e.key==='ArrowDown'){ e.preventDefault(); sugActive=(sugActive+1)%sugItems.length; renderSug(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); sugActive=(sugActive-1+sugItems.length)%sugItems.length; renderSug(); }
+  else if(e.key==='Enter'&&sugActive>=0){ e.preventDefault(); pickSug(sugActive); }
+  else if(e.key==='Escape'){ closeSug(); }
+});
+sugBox.addEventListener('mousedown',e=>{ const li=e.target.closest('.sug-item'); if(li){ e.preventDefault(); pickSug(+li.dataset.i); } });
+fTitle.addEventListener('blur',()=>setTimeout(closeSug,150));
 
 /* remember name/email on this device */
 const remember=['f-name','f-email'];
