@@ -72,6 +72,9 @@ footer{color:var(--muted);font-size:13px;padding-block:0 30px}
 .chip{font:700 10px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:1px 5px;border-radius:4px;margin-left:6px;vertical-align:2px}
 #tab-soon[aria-selected="false"]{color:var(--accent)}
 .soon-note{margin:18px 0 0;padding:10px 14px;border-radius:10px;background:var(--accent-soft);font-size:14px}
+.hdr-btn{align-self:flex-start;margin-top:14px;display:inline-block;font:600 15px var(--body);text-decoration:none;color:var(--marquee);background:var(--bulb);padding:10px 18px;border-radius:999px}
+.hdr-btn:hover{filter:brightness(1.08)}
+.hdr-btn:focus-visible{outline:2px solid var(--marquee-fg);outline-offset:3px}
 </style>
 </head>
 <body style="margin:0">
@@ -80,6 +83,7 @@ footer{color:var(--muted);font-size:13px;padding-block:0 30px}
   <div class="eyebrow">Now showing</div>
   <h1>Isaz's Movie Library</h1>
   <div class="stats" id="stats"></div>
+  <a class="hdr-btn" href="requests.html">Request a movie or show →</a>
 </div></header>
 
 <section class="recent" aria-labelledby="recent-h"><div class="wrap">
