@@ -116,7 +116,7 @@ li .y{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-
 <header class="marquee"><div class="wrap">
   <div class="eyebrow">Box office · open</div>
   <h1>Family Movie Requests</h1>
-  <p class="lede">Check <a href="./" style="color:var(--bulb)">the library</a> first. If what you want isn't there, ask for it here. Miguel gets an email, and the board below shows the status and ETA once he replies.</p>
+  <p class="lede">Check <a href="./" style="color:var(--bulb)">the library</a> first. If what you want isn't there, ask for it here. Isaz gets an email, and the board below shows the status and ETA once he replies.</p>
 </div></header>
 
 <section class="block"><div class="wrap">
@@ -180,7 +180,7 @@ fTitle.oninput=()=>{
   const g=typeof findGroup==='function'?findGroup(fTitle.value):null;
   if(g){const [c,l]=STATUS_CLASS(g.status,g.reply); fHint.className='hint have'; fHint.textContent=`Already requested by ${namesText(g)} (${l}). You can add yourself with “Me too”.`; return;}
   const soonHit=SOON.filter(x=>x.k===k);
-  if(!exact.length&&soonHit.length){fHint.className='hint have';fHint.textContent='Already on Miguel’s list — coming soon: '+soonHit.map(x=>x.label).join(', ');return;}
+  if(!exact.length&&soonHit.length){fHint.className='hint have';fHint.textContent='Already on Isaz’s list — coming soon: '+soonHit.map(x=>x.label).join(', ');return;}
   if(exact.length){fHint.className='hint have';fHint.textContent='Already in the library: '+exact.map(x=>x.label).join(', ');}
   else if(close.length){fHint.textContent='In the library: '+close.map(x=>x.label).join(', ');}
 };
@@ -271,7 +271,7 @@ async function send(v,meToo){
   sendBtn.disabled=true; statusEl.textContent='Sending…';
   try{
     await fetch(FORM_URL,{method:'POST',mode:'no-cors',body});
-    statusEl.textContent=meToo?`Added. Miguel will see that you want “${v.title}” too.`:`Sent. Miguel will get an email about “${v.title}”.`;
+    statusEl.textContent=meToo?`Added. Isaz will see that you want “${v.title}” too.`:`Sent. Isaz will get an email about “${v.title}”.`;
     pending.unshift({ts:new Date(),kind:v.kind,title:v.title,note:v.note,name:v.name,status:'',eta:'',reply:'',local:true});
     fTitle.value='';document.getElementById('f-note').value='';fHint.textContent='';fHint.className='hint';
     render();
@@ -286,7 +286,7 @@ document.getElementById('form').onsubmit=e=>{
   const kk=norm(v.title);
   const libHit=INDEX.find(x=>x.k===kk), soonHit=SOON.find(x=>x.k===kk);
   if(libHit){ statusEl.innerHTML=`“${esc(libHit.label)}” is already in the library. <a href="./">Open the library</a>`; return; }
-  if(soonHit){ statusEl.innerHTML=`“${esc(soonHit.label)}” is already on Miguel’s list to get. <a href="./#soon">See Coming soon</a>`; return; }
+  if(soonHit){ statusEl.innerHTML=`“${esc(soonHit.label)}” is already on Isaz’s list to get. <a href="./#soon">See Coming soon</a>`; return; }
   const g=findGroup(v.title);
   if(g){
     const [cls,label]=STATUS_CLASS(g.status,g.reply);
@@ -366,7 +366,7 @@ function render(){
       <div class="req-top"><span class="req-title">${esc(x.title)}${/tv/i.test(x.kind)?' <span class="meta">· TV</span>':''}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${n>1?`<span class="pill s-more">${n} people want this</span>`:''}<span class="pill s-${cls}">${esc(label)}</span></span></div>
       <div class="meta">${x.names.length?esc(namesText(x))+' · ':''}First asked ${when}${x.eta?' · ETA '+esc(x.eta):''}</div>
       ${x.note?`<div class="meta">“${esc(x.note)}”</div>`:''}
-      ${x.reply?`<div class="reply"><b>Miguel:</b> ${esc(x.reply)}</div>`:''}
+      ${x.reply?`<div class="reply"><b>Isaz:</b> ${esc(x.reply)}</div>`:''}
       ${ADMIN&&!x.local?`<div class="admin-row">${[['Available now','✓ Mark done','done'],['Working on it','Working on it','work'],["Can't get it","Can't get it",'nope']].map(([st,lbl,c])=>`<a class="abtn ${c}" target="_blank" rel="noopener" data-st="${esc(st)}" data-key="${esc(x.key)}" href="${ADMIN_URL}?${new URLSearchParams({ts:x.rows.filter(r=>!r.local).slice(-1)[0].ts,title:x.title,status:st,all:'1'})}">${lbl}</a>`).join('')}</div>`:''}
     </article>`;
   }).join('');
